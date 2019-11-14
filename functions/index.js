@@ -6,6 +6,7 @@ const admin = require('firebase-admin');
 admin.initializeApp();
 
 const validationURL = "https://us-central1-virtualroboticstoolkit-9a9cb.cloudfunctions.net/tokenValidation";
+const addVRTUserURL = "https://us-central1-oauthtest-abb59.cloudfunctions.net/addUserFromPortal";
 const userCompsPath = "usercompetitions";
 const compsPath = "competitions";
 const resultsPath = "userscores";
@@ -18,18 +19,40 @@ exports.submitResults = functions.https.onRequest((req, res) => {
     ValidateUser(req, res, SubmitScoreForUser)
 });
 
+exports.addUserToVRT = functions.auth.user().onCreate((user) => {
+    var uid = user.uid;
+    request({
+        url: addVRTUserURL,
+        method: "POST",
+        json: true,
+        body: {email: user.email, pw: user.emailVerified, portalID: "portalID"}
+    }, (error, response, body) => {
+        if (error) {
+            ret.error = error;
+            return res.status(200).send(ret);
+        }
+        if (response.statusCode != 200) {
+            ret.error = 'Invalid status code <' + response.statusCode + '>';
+            return res.status(200).send(ret);
+        }
+        const validation = body;
+        //console.log(validation);
+        if (!validation.valid) {
+            return res.status(200).send(validation);
+        }
+    });
+});
+
 function ValidateUser(req, res, onSuccess) {
     var ret = { valid: false, error: "" };
     //console.log("Body: " + req.body);
     if (!req.body.token) {
         ret.error = "No Token in message";
-        res.status(200).send(ret);
-        return;
+        return res.status(200).send(ret);
     }
     if (!req.body.uid) {
         ret.error = "No UID in message";
-        res.status(200).send(ret);
-        return;
+        return res.status(200).send(ret);
     }
 
     request({
@@ -40,19 +63,16 @@ function ValidateUser(req, res, onSuccess) {
     }, (error, response, body) => {
         if (error) {
             ret.error = error;
-            res.status(200).send(ret);
-            return;
+            return res.status(200).send(ret);
         }
         if (response.statusCode != 200) {
             ret.error = 'Invalid status code <' + response.statusCode + '>';
-            res.status(200).send(ret);
-            return;
+            return res.status(200).send(ret);
         }
         const validation = body;
         //console.log(validation);
         if (!validation.valid) {
-            res.status(200).send(validation);
-            return;
+            return res.status(200).send(validation);
         }
         admin.auth().getUserByEmail(validation.email).then(function (user) {
             onSuccess(req, res, user);
@@ -73,8 +93,7 @@ function GetCompetitionsForUser(req, res, user) {
         var currCount = 0;
         var compsInfo = {};
         if (count == 0) {
-            res.status(200).send(compsInfo);
-            return;
+            return res.status(200).send(compsInfo);
         }
         for (let k in snapshotObject) {
             //console.log("Key: " + k + " value: " + snapshotObject[k]);
@@ -82,25 +101,25 @@ function GetCompetitionsForUser(req, res, user) {
                 compsInfo[snapshotObject[k]] = compSnapshot;
                 currCount++;
                 if (currCount === count) {
-                    res.status(200).send(compsInfo);
+                    return res.status(200).send(compsInfo);
                 }
             }).catch(function (error) {
                 console.log(error);
-                res.status(200).send(error);
+                return res.status(200).send(error);
             });
         }
     }).catch(function (error) {
         console.log(error);
-        res.status(200).send(compsInfo);
+        return res.status(200).send(compsInfo);
     });
 }
 
 function SubmitScoreForUser(req, res, user) {
     var uid = user.uid;
-    admin.database().ref(resultsPath + "/" + uid).push(req.body.result).then(function (dbRef) {
-        res.status(200).send(dbRef);
+    return admin.database().ref(resultsPath + "/" + uid).push(req.body.result).then(function (dbRef) {
+        return res.status(200).send(dbRef);
     }).catch(function (error) {
         console.log(error);
-        res.status(200).send(error);
+        return res.status(200).send(error);
     });
 }
