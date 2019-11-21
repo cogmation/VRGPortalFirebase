@@ -5,8 +5,10 @@ const admin = require('firebase-admin');
 
 admin.initializeApp();
 
-const validationURL = "https://us-central1-virtualroboticstoolkit-9a9cb.cloudfunctions.net/tokenValidation";
-const addVRTUserURL = "https://us-central1-oauthtest-61ef6.cloudfunctions.net/addUserFromPortal";
+const validationURL = "tokenValidation";
+const addVRTUserURL = "addUserFromPortal";
+//const functionsHost = "https://us-central1-virtualroboticstoolkit-9a9cb.cloudfunctions.net";
+const functionsHost = "https://us-central1-oauthtest-61ef6.cloudfunctions.net/";
 const userCompsPath = "usercompetitions";
 const compsPath = "competitions";
 const resultsPath = "userscores";
@@ -24,7 +26,7 @@ exports.addUserToVRT = functions.auth.user().onCreate((user) => {
     var uid = user.uid;
     return new Promise(function (resolve, reject) {
         request({
-            url: addVRTUserURL,
+            url: functionsHost + addVRTUserURL,
             method: "POST",
             json: true,
             body: { email: user.email, pw: user.emailVerified, portalID: portalID }
@@ -63,7 +65,7 @@ function ValidateUser(req, res, onSuccess) {
     }
     return new Promise(function (resolve, reject) {
         request({
-            url: validationURL,
+            url: functionsHost + validationURL,
             method: "POST",
             json: true,
             body: req.body
