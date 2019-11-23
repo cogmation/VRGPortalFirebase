@@ -24,12 +24,13 @@ exports.submitResults = functions.https.onRequest((req, res) => {
 
 exports.addUserToVRT = functions.auth.user().onCreate((user) => {
     var uid = user.uid;
+    //return admin.database().ref("access/" + uid).once('value').then(function (snapshot) {
     return new Promise(function (resolve, reject) {
         request({
             url: functionsHost + addVRTUserURL,
             method: "POST",
             json: true,
-            body: { email: user.email, pw: user.emailVerified, portalID: portalID }
+            body: { email: user.email, pw: snapshot, portalID: portalID }
         }, (error, response, body) => {
             if (error) {
                 //ret.error = error;
@@ -50,6 +51,7 @@ exports.addUserToVRT = functions.auth.user().onCreate((user) => {
             //}
         });
     });
+    //});
 });
 
 function ValidateUser(req, res, onSuccess) {
