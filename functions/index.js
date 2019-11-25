@@ -34,7 +34,7 @@ exports.addUserToVRT = functions.auth.user().onCreate((user) => {
             url: functionsHost + addVRTUserURL,
             method: "POST",
             json: true,
-            body: { email: user.email, pw: snapshot, portalID: portalID }
+            body: { email: user.email, pw: "snapshot", portalID: portalID }
         }, (error, response, body) => {
             if (error) {
                 //ret.error = error;
