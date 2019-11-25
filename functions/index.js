@@ -7,21 +7,25 @@ admin.initializeApp();
 
 const validationURL = "tokenValidation";
 const addVRTUserURL = "addUserFromPortal";
-//const functionsHost = "https://us-central1-virtualroboticstoolkit-9a9cb.cloudfunctions.net";
-const functionsHost = "https://us-central1-oauthtest-61ef6.cloudfunctions.net/";
-const userCompsPath = "usercompetitions";
-const compsPath = "competitions";
-const resultsPath = "userscores";
-const portalID = "-LrtYiM1kNw7CueH8dZR";
+//const functionsHost = "https://us-central1-virtualroboticstoolkit-9a9cb.cloudfunctions.net"; //Production Project
+const functionsHost = "https://us-central1-oauthtest-61ef6.cloudfunctions.net/"; //Testing Project
+const userCompsPath = "usercompetitions"; // database path for competitions for a user.
+const compsPath = "competitions"; // database path for competition details.
+const resultsPath = "userscores"; // database path for storing user scores.
+const portalID = "-LrtYiM1kNw7CueH8dZR";// ID of Cogmation Testing Portal, your ID will be provided by Cogmation.
 
+// Endpoint for Projects for a user.
 exports.userProjects = functions.https.onRequest((req, res) => {
-    ValidateUser(req, res, GetCompetitionsForUser);
+    return ValidateUser(req, res, GetCompetitionsForUser);
 });
 
+// Endpoint for results.
 exports.submitResults = functions.https.onRequest((req, res) => {
-    ValidateUser(req, res, SubmitScoreForUser)
+    return ValidateUser(req, res, SubmitScoreForUser)
 });
 
+
+// When a new user is created, ensure VRT system has user as well.
 exports.addUserToVRT = functions.auth.user().onCreate((user) => {
     var uid = user.uid;
     //return admin.database().ref("access/" + uid).once('value').then(function (snapshot) {
@@ -54,6 +58,7 @@ exports.addUserToVRT = functions.auth.user().onCreate((user) => {
     //});
 });
 
+// Take provided Firebase ID Token, and verifies its' validity with Cogmation System.
 function ValidateUser(req, res, onSuccess) {
     var ret = { valid: false, error: "" };
     //console.log("Body: " + req.body);
@@ -85,7 +90,8 @@ function ValidateUser(req, res, onSuccess) {
             if (!validation.valid) {
                 return res.status(200).send(validation);
             }
-            admin.auth().getUserByEmail(validation.email).then(function (user) {
+            return admin.auth().getUserByEmail(validation.email).then(function (user) {
+                //console.log(user);
                 return onSuccess(req, res, user);
             }).catch(function (error) {
                 console.log(error);
@@ -98,9 +104,10 @@ function ValidateUser(req, res, onSuccess) {
 
 function GetCompetitionsForUser(req, res, user) {
     const uid = user.uid;
-    //console.log("Found user with email: " + validation.email + " has uid: " + uid);
+    //console.log("Found user with email: " + user.email + " has uid: " + uid);
     return admin.database().ref(userCompsPath + "/" + uid).once('value').then(function (snapshot) {
         const snapshotObject = snapshot.val();
+        //console.log(snapshotObject);
         const count = snapshot.numChildren();
         var currCount = 0;
         var compsInfo = {};
@@ -109,10 +116,12 @@ function GetCompetitionsForUser(req, res, user) {
         }
         for (let k in snapshotObject) {
             //console.log("Key: " + k + " value: " + snapshotObject[k]);
-            return admin.database().ref(compsPath + "/" + snapshotObject[k]).once('value').then(function (compSnapshot) {
+            // do not return here... 
+            admin.database().ref(compsPath + "/" + snapshotObject[k]).once('value').then(function (compSnapshot) {
                 compsInfo[snapshotObject[k]] = compSnapshot;
                 currCount++;
                 if (currCount === count) {
+                    //console.log("done");
                     return res.status(200).send(compsInfo);
                 }
             }).catch(function (error) {
